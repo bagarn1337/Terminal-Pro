@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Panel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.08);--red:#f0455a;--red-dim:rgba(240,69,90,0.08);
+  --yellow:#f5c842;--blue:#4b9fff;
+  --bg:#080b0e;--bg1:#0c1015;--bg2:#111820;--bg3:#16202a;--bg4:#1c2a36;
+  --b1:rgba(255,255,255,0.04);--b2:rgba(255,255,255,0.07);--b3:rgba(255,255,255,0.11);
+  --b-accent:rgba(0,229,160,0.25);
+  --t1:#f0f4f8;--t2:#8fa4b8;--t3:#4e6478;--t4:#2a3d50;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--mono);font-size:12px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* ── Titlebar ── */
+#titlebar{
+  height:36px;background:var(--bg1);border-bottom:1px solid var(--b2);
+  display:flex;align-items:center;gap:0;
+  -webkit-app-region:drag;flex-shrink:0;user-select:none;
+}
+#tb-ticker-wrap{
+  display:flex;align-items:center;gap:6px;
+  padding:0 10px;height:100%;flex:1;min-width:0;
+  -webkit-app-region:no-drag;
+}
+#tb-ticker{
+  background:transparent;border:none;color:var(--accent);
+  font-family:var(--mono);font-size:12px;font-weight:600;
+  text-transform:uppercase;outline:none;width:80px;
+  caret-color:var(--accent);letter-spacing:0.08em;
+}
+#tb-ticker::placeholder{color:var(--t4);font-weight:400}
+#tb-go{
+  background:var(--accent-dim);border:1px solid rgba(0,229,160,0.2);
+  color:var(--accent);font-family:var(--mono);font-size:9px;font-weight:700;
+  padding:3px 9px;border-radius:3px;cursor:pointer;letter-spacing:0.06em;
+  -webkit-app-region:no-drag;
+}
+#tb-go:hover{background:rgba(0,229,160,0.15)}
+#tb-label{
+  font-family:var(--mono);font-size:9px;font-weight:600;
+  letter-spacing:0.15em;color:var(--t3);text-transform:uppercase;
+  flex:1;text-align:center;pointer-events:none;
+}
+#tb-winbtns{display:flex;align-items:stretch;height:36px;-webkit-app-region:no-drag}
+.tb-btn{
+  background:transparent;border:none;color:var(--t3);
+  width:40px;height:36px;font-size:13px;cursor:pointer;
+  font-family:var(--mono);transition:background 0.1s;
+  display:flex;align-items:center;justify-content:center;
+}
+.tb-btn:hover{background:rgba(255,255,255,0.06);color:var(--t1)}
+#tb-close:hover{background:#f0455a!important;color:#fff!important}
+
+/* ── Content ── */
+#panel-content{
+  flex:1;overflow:auto;display:flex;flex-direction:column;
+  height:calc(100% - 36px);
+}
+#panel-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
+
+/* ── Loading ── */
+.loading{display:flex;align-items:center;justify-content:center;height:100%;
+  color:var(--t4);font-size:10px;letter-spacing:0.15em;gap:8px}
+.spin{width:12px;height:12px;border:1.5px solid var(--b2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 0.7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Shared styles ── */
+.card{background:var(--bg2);border:1px solid var(--b2);padding:12px 14px;margin:8px;border-radius:2px}
+.row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1);font-size:11px}
+.row:last-child{border-bottom:none}
+.lbl{color:var(--t3);font-size:10px}
+.val{color:var(--t1);font-family:var(--mono)}
+.up{color:var(--accent)}.dn{color:var(--red)}.neu{color:var(--t3)}
+.sec-hdr{color:var(--t3);font-size:9px;letter-spacing:0.18em;text-transform:uppercase;
+  padding:10px 14px 5px;border-bottom:1px solid var(--b1);font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{color:var(--t3);font-size:9px;letter-spacing:0.08em;text-align:right;
+  padding:5px 10px;border-bottom:1px solid var(--b2);font-weight:600;text-transform:uppercase}
+th:first-child{text-align:left}
+td{padding:5px 10px;border-bottom:1px solid var(--b1);text-align:right;color:var(--t2)}
+td:first-child{text-align:left;color:var(--t1)}
+tr:hover td{background:rgba(255,255,255,0.02)}
+
+/* ── Chart panel ── */
+#chart-container{flex:1;min-height:0;position:relative}
+
+/* ── L2 Order Book ── */
+#l2-wrap{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.l2-header{display:grid;grid-template-columns:1fr 60px 1fr;gap:0;
+  font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--t3);
+  padding:6px 8px;border-bottom:1px solid var(--b2);text-transform:uppercase}
+.l2-book{flex:1;overflow-y:auto}
+.l2-row{display:grid;grid-template-columns:1fr 60px 1fr;gap:0;
+  font-size:11px;font-family:var(--mono);padding:2px 8px;
+  border-bottom:1px solid rgba(255,255,255,0.02);align-items:center}
+.l2-row:hover{background:rgba(255,255,255,0.02)}
+.l2-bid{color:var(--accent);text-align:right}
+.l2-ask{color:var(--red);text-align:left;padding-left:8px}
+.l2-price{text-align:center;font-weight:600;color:var(--t1);font-size:11px}
+.l2-bar-bid{height:100%;background:rgba(0,229,160,0.12);border-radius:1px;float:right}
+.l2-bar-ask{height:100%;background:rgba(240,69,90,0.12);border-radius:1px}
+.l2-spread{text-align:center;font-size:9px;color:var(--t3);
+  padding:3px;border-top:1px solid var(--b1);border-bottom:1px solid var(--b1);
+  background:var(--bg1)}
+
+/* ── Time & Sales ── */
+#ts-wrap{display:flex;flex-direction:column;height:100%}
+.ts-header{display:grid;grid-template-columns:60px 80px 70px 1fr;
+  font-size:9px;color:var(--t3);padding:5px 8px;border-bottom:1px solid var(--b2);
+  font-weight:600;letter-spacing:0.08em;text-transform:uppercase}
+.ts-feed{flex:1;overflow-y:auto}
+.ts-row{display:grid;grid-template-columns:60px 80px 70px 1fr;
+  font-size:11px;padding:2px 8px;border-bottom:1px solid rgba(255,255,255,0.02)}
+.ts-row.buy{border-left:2px solid var(--accent)}
+.ts-row.sell{border-left:2px solid var(--red)}
+.ts-row.big{background:rgba(0,229,160,0.04)}
+.ts-time{color:var(--t4);font-size:10px}
+.ts-price-up{color:var(--accent);font-weight:600}
+.ts-price-dn{color:var(--red);font-weight:600}
+.ts-size{color:var(--t2)}
+.ts-side-buy{color:var(--accent);font-size:9px;font-weight:700}
+.ts-side-sell{color:var(--red);font-size:9px;font-weight:700}
+
+/* ── News ── */
+#news-wrap{overflow-y:auto;height:100%}
+.news-item{padding:10px 12px;border-bottom:1px solid var(--b1);cursor:pointer}
+.news-item:hover{background:var(--bg2)}
+.news-headline{color:var(--t1);font-size:11px;line-height:1.5;margin-bottom:4px}
+.news-meta{color:var(--t4);font-size:9px;letter-spacing:0.04em}
+.news-src{color:var(--accent);font-weight:600}
+
+/* ── Overview ── */
+#ov-wrap{overflow-y:auto;height:100%}
+.ov-price{font-size:32px;font-weight:300;color:var(--t1);padding:12px 14px 4px;font-family:var(--mono)}
+.ov-chg{font-size:13px;padding:0 14px 12px;font-family:var(--mono)}
+</style>
+</head>
+<body>
+<div id="panel-wrap">
+  <!-- Titlebar -->
+  <div id="titlebar">
+    <div id="tb-ticker-wrap">
+      <input id="tb-ticker" type="text" placeholder="Symbol" maxlength="12" autocomplete="off" spellcheck="false">
+      <button id="tb-go">GO</button>
+    </div>
+    <span id="tb-label">PANEL</span>
+    <div id="tb-winbtns">
+      <button class="tb-btn" id="tb-min" title="Minimize">&#8722;</button>
+      <button class="tb-btn" id="tb-max" title="Maximize">&#9633;</button>
+      <button class="tb-btn" id="tb-close" title="Close">&#10005;</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="panel-content">
+    <div class="loading"><div class="spin"></div>LOADING…</div>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:8000';
+const params = new URLSearchParams(location.search);
+const TYPE   = params.get('type')   || 'chart';
+const TICKER_INIT = (params.get('ticker') || 'SPY').toUpperCase();
+
+const LABELS = {
+  chart:'CHART', level2:'LEVEL 2', timesales:'TIME & SALES',
+  news:'NEWS', watchlist:'WATCHLIST', options:'OPTIONS CHAIN',
+  overview:'OVERVIEW', orderflow:'ORDER FLOW', heatmap:'HEATMAP',
+  portfolio:'PORTFOLIO', screener:'SCREENER', macro:'MACRO',
+  dcf:'DCF MODEL', risk:'RISK', calendar:'CALENDAR',
+};
+
+let ticker = TICKER_INIT;
+const content = document.getElementById('panel-content');
+const tbLabel = document.getElementById('tb-label');
+const tbTicker = document.getElementById('tb-ticker');
+
+// Window controls
+if (window.electronAPI) {
+  document.getElementById('tb-min').onclick   = () => electronAPI.minimize();
+  document.getElementById('tb-max').onclick   = () => electronAPI.maximize();
+  document.getElementById('tb-close').onclick = () => electronAPI.closeWindow();
+} else {
+  document.getElementById('tb-winbtns').style.display = 'none';
+}
+
+// Ticker input
+tbTicker.value = ticker;
+document.getElementById('tb-go').onclick = () => load(tbTicker.value.trim().toUpperCase() || ticker);
+tbTicker.onkeydown = e => { if (e.key === 'Enter') load(tbTicker.value.trim().toUpperCase() || ticker); };
+
+function setLabel(t) {
+  tbLabel.textContent = (LABELS[TYPE] || TYPE.toUpperCase()) + (t ? ' · ' + t : '');
+  document.title = (LABELS[TYPE] || TYPE) + (t ? ' · ' + t : '') + ' — Terminal Pro';
+}
+
+async function load(sym) {
+  ticker = sym || ticker;
+  tbTicker.value = ticker;
+  setLabel(ticker);
+  if (window.electronAPI) electronAPI.updateTicker && electronAPI.updateTicker(0, ticker).catch(()=>{});
+  content.innerHTML = '<div class="loading"><div class="spin"></div>LOADING…</div>';
+  try {
+    await PANELS[TYPE](ticker);
+  } catch(e) {
+    content.innerHTML = '<div class="loading">Error loading data</div>';
+    console.error(e);
+  }
+}
+
+// ── PANEL RENDERERS ──────────────────────────────────────────────────────────
+
+const PANELS = {
+
+  // ── Chart (full TradingView Advanced Chart) ──
+  async chart(sym) {
+    content.innerHTML = `
+      <div id="tv-chart-wrap" style="width:100%;height:100%">
+        <div id="tv-container" style="width:100%;height:100%"></div>
+      </div>`;
+    // Load TradingView widget script
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/tv.js';
+    script.onload = () => {
+      new TradingView.widget({
+        container_id: 'tv-container',
+        symbol: sym,
+        interval: 'D',
+        timezone: 'Etc/UTC',
+        theme: 'dark',
+        style: '1',
+        locale: 'en',
+        toolbar_bg: '#0c1015',
+        enable_publishing: false,
+        hide_top_toolbar: false,
+        hide_legend: false,
+        save_image: true,
+        studies: ['RSI@tv-basicstudies','MACD@tv-basicstudies','Volume@tv-basicstudies'],
+        drawings_access: { type: 'all' },
+        width: '100%',
+        height: '100%',
+        autosize: true,
+        backgroundColor: '#080b0e',
+        gridColor: 'rgba(255,255,255,0.04)',
+        withdateranges: true,
+        allow_symbol_change: true,
+        watchlist: ['AAPL','MSFT','NVDA','TSLA','AMZN','META','GOOGL','SPY','QQQ','BTC-USD'],
+        details: true,
+        hotlist: true,
+        calendar: false,
+        show_popup_button: false,
+      });
+    };
+    document.head.appendChild(script);
+  },
+
+  // ── Level 2 Order Book ──
+  async level2(sym) {
+    content.innerHTML = `
+      <div id="l2-wrap">
+        <div class="l2-header"><span style="text-align:right">BID SIZE</span><span style="text-align:center">PRICE</span><span>ASK SIZE</span></div>
+        <div class="l2-spread" id="l2-spread">SPREAD —</div>
+        <div class="l2-book" id="l2-book"><div class="loading"><div class="spin"></div></div></div>
+      </div>`;
+    renderL2(sym);
+    setInterval(() => renderL2(sym), 1500);
+  },
+
+  // ── Time & Sales ──
+  async timesales(sym) {
+    content.innerHTML = `
+      <div id="ts-wrap">
+        <div class="ts-header"><span>TIME</span><span>PRICE</span><span>SIZE</span><span>SIDE</span></div>
+        <div class="ts-feed" id="ts-feed"><div class="loading"><div class="spin"></div></div></div>
+      </div>`;
+    startTimeSales(sym);
+  },
+
+  // ── News ──
+  async news(sym) {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res  = await fetch(`${API}/news/${sym}`);
+    const data = await res.json();
+    const items = data.news || data.articles || [];
+    if (!items.length) { content.innerHTML='<div class="loading">No news</div>'; return; }
+    content.innerHTML = `<div id="news-wrap">${items.slice(0,40).map(n => `
+      <div class="news-item" onclick="window.open('${n.url||'#'}','_blank')">
+        <div class="news-headline">${n.title||n.headline||''}</div>
+        <div class="news-meta"><span class="news-src">${n.source||n.publisher||'NEWS'}</span> · ${n.time||n.published||''}</div>
+      </div>`).join('')}</div>`;
+  },
+
+  // ── Overview (DES) ──
+  async overview(sym) {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res  = await fetch(`${API}/stock/${sym}`);
+    const d    = await res.json();
+    const chg  = d.change_pct || 0;
+    const cls  = chg >= 0 ? 'up' : 'dn';
+    const sign = chg >= 0 ? '+' : '';
+    content.innerHTML = `
+      <div id="ov-wrap">
+        <div class="ov-price">$${(d.price||0).toFixed(2)}</div>
+        <div class="ov-chg ${cls}">${sign}${chg.toFixed(2)}%</div>
+        <div class="card">
+          <div class="row"><span class="lbl">Open</span><span class="val">$${(d.open||0).toFixed(2)}</span></div>
+          <div class="row"><span class="lbl">High</span><span class="val up">$${(d.high||0).toFixed(2)}</span></div>
+          <div class="row"><span class="lbl">Low</span><span class="val dn">$${(d.low||0).toFixed(2)}</span></div>
+          <div class="row"><span class="lbl">Volume</span><span class="val">${fmtNum(d.volume)}</span></div>
+          <div class="row"><span class="lbl">Mkt Cap</span><span class="val">${fmtNum(d.market_cap)}</span></div>
+          <div class="row"><span class="lbl">P/E</span><span class="val">${d.pe_ratio?.toFixed(1)||'—'}</span></div>
+          <div class="row"><span class="lbl">52W High</span><span class="val">$${(d.week52_high||0).toFixed(2)}</span></div>
+          <div class="row"><span class="lbl">52W Low</span><span class="val">$${(d.week52_low||0).toFixed(2)}</span></div>
+        </div>
+        <div class="card" style="font-size:10px;color:var(--t2);line-height:1.6">${d.description||d.summary||d.longBusinessSummary||''}</div>
+      </div>`;
+  },
+
+  // ── Watchlist ──
+  async watchlist(sym) {
+    const stored = JSON.parse(localStorage.getItem('tp_watchlist')||'["AAPL","MSFT","NVDA","TSLA","AMZN","META","GOOGL","SPY","QQQ"]');
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const rows = await Promise.all(stored.map(async s => {
+      try {
+        const r = await fetch(`${API}/stock/${s}`);
+        return {...(await r.json()), _sym: s};
+      } catch { return {_sym:s, price:0, change_pct:0}; }
+    }));
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">
+      <table><thead><tr><th style="text-align:left">Symbol</th><th>Price</th><th>Chg%</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const c = r.change_pct||0, cls = c>=0?'up':'dn', s=c>=0?'+':'';
+        return `<tr onclick="load('${r._sym}')" style="cursor:pointer">
+          <td style="color:var(--accent);font-weight:600">${r._sym}</td>
+          <td>$${(r.price||0).toFixed(2)}</td>
+          <td class="${cls}">${s}${c.toFixed(2)}%</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>`;
+  },
+
+  // ── Options Chain ──
+  async options(sym) {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/options/${sym}`);
+    const d   = await res.json();
+    const chain = d.calls?.slice(0,15)||[];
+    const puts  = d.puts?.slice(0,15)||[];
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">
+      <div class="sec-hdr">CALLS</div>
+      <table><thead><tr><th style="text-align:left">Strike</th><th>Bid</th><th>Ask</th><th>Vol</th><th>OI</th><th>IV</th></tr></thead>
+      <tbody>${chain.map(o=>`<tr>
+        <td style="color:var(--accent)">${o.strike}</td><td>${o.bid||'—'}</td><td>${o.ask||'—'}</td>
+        <td>${fmtNum(o.volume)}</td><td>${fmtNum(o.openInterest)}</td><td>${((o.impliedVolatility||0)*100).toFixed(0)}%</td>
+      </tr>`).join('')}</tbody></table>
+      <div class="sec-hdr" style="margin-top:8px">PUTS</div>
+      <table><thead><tr><th style="text-align:left">Strike</th><th>Bid</th><th>Ask</th><th>Vol</th><th>OI</th><th>IV</th></tr></thead>
+      <tbody>${puts.map(o=>`<tr>
+        <td style="color:var(--red)">${o.strike}</td><td>${o.bid||'—'}</td><td>${o.ask||'—'}</td>
+        <td>${fmtNum(o.volume)}</td><td>${fmtNum(o.openInterest)}</td><td>${((o.impliedVolatility||0)*100).toFixed(0)}%</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  },
+
+  // ── Macro ──
+  async macro() {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/macro`);
+    const d   = await res.json();
+    const sections = ['indices','commodities','crypto','forex'];
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">${sections.map(sec => {
+      const items = d[sec]||[];
+      if (!items.length) return '';
+      return `<div class="sec-hdr">${sec.toUpperCase()}</div>
+        <table><tbody>${items.map(i => {
+          const c = i.change_pct||0, cls=c>=0?'up':'dn', s=c>=0?'+':'';
+          return `<tr><td>${i.name||i.symbol}</td><td>${i.price?.toFixed?.(2)||i.price}</td><td class="${cls}">${s}${c.toFixed(2)}%</td></tr>`;
+        }).join('')}</tbody></table>`;
+    }).join('')}</div>`;
+  },
+
+  // ── Portfolio ──
+  async portfolio() {
+    const stored = JSON.parse(localStorage.getItem('tp_portfolio')||'[]');
+    if (!stored.length) { content.innerHTML='<div class="loading">No positions</div>'; return; }
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">
+      <table><thead><tr><th style="text-align:left">Symbol</th><th>Qty</th><th>Price</th><th>P&L</th></tr></thead>
+      <tbody>${stored.map(p=>`<tr>
+        <td style="color:var(--accent);font-weight:600">${p.ticker}</td>
+        <td>${p.shares||p.qty||0}</td>
+        <td>$${(p.price||p.currentPrice||0).toFixed(2)}</td>
+        <td class="${(p.pnl||0)>=0?'up':'dn'}">${(p.pnl||0)>=0?'+':''}${(p.pnl||0).toFixed(2)}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  },
+
+  // ── Risk ──
+  async risk(sym) {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/risk/${sym}`);
+    const d   = await res.json();
+    const metrics = [
+      ['Sharpe Ratio', d.sharpe?.toFixed(2)],['Sortino', d.sortino?.toFixed(2)],
+      ['Beta', d.beta?.toFixed(2)],['VaR (95%)', d.var_95?.toFixed(2)+'%'],
+      ['CVaR', d.cvar?.toFixed(2)+'%'],['Max Drawdown', d.max_drawdown?.toFixed(2)+'%'],
+      ['Calmar', d.calmar?.toFixed(2)],['Volatility', d.volatility?.toFixed(2)+'%'],
+    ];
+    content.innerHTML = `<div class="card"><table><tbody>${metrics.map(([l,v])=>
+      `<tr><td class="lbl">${l}</td><td>${v||'—'}</td></tr>`
+    ).join('')}</tbody></table></div>`;
+  },
+
+  // ── DCF ──
+  async dcf(sym) {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/dcf/${sym}`);
+    const d   = await res.json();
+    const upside = ((d.intrinsic_value - d.current_price)/d.current_price*100);
+    const cls = upside>=0?'up':'dn';
+    content.innerHTML = `<div class="card" style="text-align:center;padding:20px">
+      <div style="font-size:10px;color:var(--t3);letter-spacing:0.15em;margin-bottom:8px">INTRINSIC VALUE</div>
+      <div style="font-size:42px;color:var(--accent);font-weight:300;font-family:var(--mono)">$${(d.intrinsic_value||0).toFixed(2)}</div>
+      <div style="font-size:14px;margin-top:8px" class="${cls}">${upside>=0?'+':''}${upside.toFixed(1)}% vs current</div>
+    </div>
+    <div class="card"><table><tbody>
+      <tr><td class="lbl">Current Price</td><td>$${(d.current_price||0).toFixed(2)}</td></tr>
+      <tr><td class="lbl">Revenue Growth</td><td>${(d.revenue_growth*100||0).toFixed(1)}%</td></tr>
+      <tr><td class="lbl">Discount Rate</td><td>${(d.discount_rate*100||10).toFixed(1)}%</td></tr>
+    </tbody></table></div>`;
+  },
+
+  // ── Screener ──
+  async screener() {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/screener?min_price=10&max_price=500`);
+    const d   = await res.json();
+    const rows = (d.results||d).slice(0,40);
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">
+      <table><thead><tr><th style="text-align:left">Ticker</th><th>Price</th><th>Chg%</th><th>Mkt Cap</th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const c=r.change_pct||0,cls=c>=0?'up':'dn',s=c>=0?'+':'';
+        return `<tr onclick="load('${r.ticker}')" style="cursor:pointer">
+          <td style="color:var(--accent);font-weight:600">${r.ticker}</td>
+          <td>$${(r.price||0).toFixed(2)}</td>
+          <td class="${cls}">${s}${c.toFixed(2)}%</td>
+          <td>${fmtNum(r.market_cap)}</td></tr>`;
+      }).join('')}</tbody></table></div>`;
+  },
+
+  // ── Calendar ──
+  async calendar() {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/calendar`);
+    const d   = await res.json();
+    const events = (d.earnings||[]).slice(0,30);
+    content.innerHTML = `<div style="overflow-y:auto;height:100%">
+      <table><thead><tr><th style="text-align:left">Date</th><th style="text-align:left">Ticker</th><th>EPS Est</th><th>Timing</th></tr></thead>
+      <tbody>${events.map(e=>`<tr>
+        <td style="color:var(--t3)">${e.date||'—'}</td>
+        <td style="color:var(--accent);font-weight:600;cursor:pointer" onclick="load('${e.ticker}')">${e.ticker}</td>
+        <td>${e.eps_estimate||'—'}</td>
+        <td style="font-size:9px;color:var(--t3)">${e.timing||''}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  },
+
+  // ── Order Flow ──
+  async orderflow(sym) {
+    content.innerHTML = `
+      <div id="ts-wrap">
+        <div class="ts-header"><span>TIME</span><span>PRICE</span><span>SIZE</span><span>TYPE</span></div>
+        <div class="ts-feed" id="ts-feed"><div class="loading"><div class="spin"></div></div></div>
+      </div>`;
+    startTimeSales(sym, true);
+  },
+
+  // ── Heatmap ──
+  async heatmap() {
+    content.innerHTML = '<div class="loading"><div class="spin"></div></div>';
+    const res = await fetch(`${API}/heatmap`);
+    const d   = await res.json();
+    const cells = (d.stocks||d).slice(0,60);
+    content.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:2px;padding:8px;overflow-y:auto;height:100%">
+      ${cells.map(s => {
+        const c = s.change_pct||0;
+        const bg = c>=2?'#1e8449':c>=0.5?'#196f3d':c>=0?'#0e4023':c>=-0.5?'#4a1522':c>=-2?'#922b21':'#c0392b';
+        return `<div onclick="load('${s.ticker}')" style="background:${bg};border-radius:3px;padding:6px 4px;
+          min-width:52px;min-height:44px;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;cursor:pointer;flex:1;max-width:80px;transition:filter 0.1s"
+          onmouseover="this.style.filter='brightness(1.3)'" onmouseout="this.style.filter='none'">
+          <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.95)">${s.ticker}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.75)">${c>=0?'+':''}${c.toFixed(1)}%</div>
+        </div>`;
+      }).join('')}</div>`;
+  },
+};
+
+// ── Level 2 renderer ──────────────────────────────────────────────────────────
+async function renderL2(sym) {
+  try {
+    const res = await fetch(`${API}/stock/${sym}`);
+    const d   = await res.json();
+    const mid = d.price || 100;
+    // Simulate realistic bid/ask ladder
+    const levels = 12;
+    const spread = mid * 0.0002;
+    let html = '';
+    for (let i = 0; i < levels; i++) {
+      const bidPrice = (mid - spread/2 - i*spread*1.5).toFixed(2);
+      const askPrice = (mid + spread/2 + i*spread*1.5).toFixed(2);
+      const bidSize  = Math.floor(Math.random()*800 + 100);
+      const askSize  = Math.floor(Math.random()*800 + 100);
+      const maxSz = 900;
+      html += `<div class="l2-row">
+        <div class="l2-bid" style="position:relative">
+          <div style="position:absolute;right:0;top:0;bottom:0;width:${Math.round(bidSize/maxSz*100)}%;background:rgba(0,229,160,0.1);border-radius:1px"></div>
+          <span style="position:relative">${bidSize}</span>
+        </div>
+        <div class="l2-price">${i===0?'<span style="color:var(--accent)">'+bidPrice+'</span>':bidPrice}</div>
+        <div class="l2-ask" style="position:relative">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(askSize/maxSz*100)}%;background:rgba(240,69,90,0.1);border-radius:1px"></div>
+          <span style="position:relative">${askSize}</span>
+        </div>
+      </div>`;
+    }
+    const bookEl = document.getElementById('l2-book');
+    const spreadEl = document.getElementById('l2-spread');
+    if (bookEl) bookEl.innerHTML = html;
+    if (spreadEl) spreadEl.textContent = 'SPREAD ' + (spread*2).toFixed(3);
+  } catch(e) {}
+}
+
+// ── Time & Sales renderer ─────────────────────────────────────────────────────
+let tsInterval = null;
+async function startTimeSales(sym, flow=false) {
+  if (tsInterval) clearInterval(tsInterval);
+  let lastPrice = null;
+  try {
+    const res = await fetch(`${API}/stock/${sym}`);
+    const d   = await res.json();
+    lastPrice = d.price || 100;
+  } catch{}
+  const feed = document.getElementById('ts-feed');
+  if (!feed) return;
+  feed.innerHTML = '';
+
+  function addRow() {
+    if (!document.getElementById('ts-feed')) { clearInterval(tsInterval); return; }
+    const p = lastPrice * (1 + (Math.random()-0.5)*0.001);
+    lastPrice = p;
+    const size = Math.floor(Math.random()*900+10);
+    const buy  = Math.random() > 0.48;
+    const big  = size > 500;
+    const now  = new Date();
+    const time = now.toTimeString().slice(0,8);
+    const row  = document.createElement('div');
+    row.className = `ts-row ${buy?'buy':'sell'}${big?' big':''}`;
+    row.innerHTML = `
+      <span class="ts-time">${time}</span>
+      <span class="${buy?'ts-price-up':'ts-price-dn'}">$${p.toFixed(2)}</span>
+      <span class="ts-size">${size}</span>
+      <span class="${buy?'ts-side-buy':'ts-side-sell'}">${buy?'BUY':'SELL'}</span>`;
+    feed.insertBefore(row, feed.firstChild);
+    // Keep max 200 rows
+    while (feed.children.length > 200) feed.removeChild(feed.lastChild);
+  }
+  addRow();
+  tsInterval = setInterval(addRow, 300 + Math.random()*400);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtNum(n) {
+  if (!n) return '—';
+  if (n >= 1e12) return (n/1e12).toFixed(1)+'T';
+  if (n >= 1e9)  return (n/1e9).toFixed(1)+'B';
+  if (n >= 1e6)  return (n/1e6).toFixed(1)+'M';
+  if (n >= 1e3)  return (n/1e3).toFixed(1)+'K';
+  return n.toString();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+setLabel(TICKER_INIT);
+load(TICKER_INIT);
+</script>
+</body>
+</html>

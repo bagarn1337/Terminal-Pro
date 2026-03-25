@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chart</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --accent:#00e5a0;--accent-dim:rgba(0,229,160,0.08);--accent-glow:rgba(0,229,160,0.2);
+  --red:#f0455a;--red-dim:rgba(240,69,90,0.08);--yellow:#f5c842;--blue:#4b9fff;
+  --bg:#080b0e;--bg1:#0c1015;--bg2:#111820;--bg3:#16202a;--bg4:#1c2a36;
+  --b1:rgba(255,255,255,0.04);--b2:rgba(255,255,255,0.07);--b3:rgba(255,255,255,0.12);
+  --b-accent:rgba(0,229,160,0.25);
+  --t1:#f0f4f8;--t2:#8fa4b8;--t3:#4e6478;--t4:#2a3d50;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--t1);font-family:var(--mono);font-size:12px;user-select:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+
+/* ── Titlebar ── */
+#titlebar{
+  height:38px;background:var(--bg1);border-bottom:1px solid var(--b2);
+  display:flex;align-items:center;flex-shrink:0;
+  -webkit-app-region:drag;position:relative;z-index:100;
+}
+.tb-section{display:flex;align-items:center;height:100%;-webkit-app-region:no-drag}
+#tb-left{padding:0 8px;gap:6px;border-right:1px solid var(--b1)}
+#tb-ticker-input{
+  background:transparent;border:none;color:var(--accent);font-family:var(--mono);
+  font-size:13px;font-weight:600;text-transform:uppercase;outline:none;
+  width:72px;caret-color:var(--accent);letter-spacing:0.08em;
+}
+#tb-ticker-input::placeholder{color:var(--t4);font-weight:400}
+#tb-go{
+  background:var(--accent-dim);border:1px solid rgba(0,229,160,0.2);color:var(--accent);
+  font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 9px;
+  border-radius:3px;cursor:pointer;letter-spacing:0.08em;
+}
+#tb-go:hover{background:rgba(0,229,160,0.15)}
+
+/* Timeframe buttons */
+#tb-tf{padding:0 8px;gap:2px;border-right:1px solid var(--b1)}
+.tf-btn{
+  background:transparent;border:none;color:var(--t3);font-family:var(--mono);
+  font-size:10px;font-weight:600;padding:3px 7px;border-radius:3px;cursor:pointer;
+  letter-spacing:0.04em;transition:all 0.1s;
+}
+.tf-btn:hover{color:var(--t2);background:rgba(255,255,255,0.04)}
+.tf-btn.active{color:var(--accent);background:var(--accent-dim)}
+
+/* Chart type buttons */
+#tb-type{padding:0 8px;gap:2px;border-right:1px solid var(--b1)}
+.ct-btn{
+  background:transparent;border:none;color:var(--t3);font-size:13px;
+  padding:3px 6px;border-radius:3px;cursor:pointer;transition:all 0.1s;
+}
+.ct-btn:hover{color:var(--t2);background:rgba(255,255,255,0.04)}
+.ct-btn.active{color:var(--accent);background:var(--accent-dim)}
+
+/* Indicator / Draw buttons */
+#tb-tools{padding:0 8px;gap:4px;border-right:1px solid var(--b1)}
+.tool-btn{
+  background:transparent;border:1px solid var(--b2);color:var(--t3);
+  font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 9px;
+  border-radius:3px;cursor:pointer;letter-spacing:0.06em;transition:all 0.1s;
+}
+.tool-btn:hover{color:var(--t2);border-color:var(--b3)}
+.tool-btn.active{color:var(--accent);border-color:var(--b-accent);background:var(--accent-dim)}
+
+/* OHLCV readout */
+#tb-ohlcv{padding:0 10px;gap:10px;flex:1;font-size:10px}
+.ohlcv-item{display:flex;gap:4px;align-items:center}
+.ohlcv-lbl{color:var(--t4);font-size:9px;font-weight:600;letter-spacing:0.06em}
+.ohlcv-val{color:var(--t2);font-variant-numeric:tabular-nums}
+#ohlcv-chg{font-size:10px;font-weight:600}
+
+/* Live badge */
+#tb-live{padding:0 8px;gap:6px}
+#live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+#live-price{font-size:13px;font-weight:600;font-family:var(--mono);color:var(--t1);font-variant-numeric:tabular-nums}
+#live-chg{font-size:10px;font-family:var(--mono)}
+
+/* Window controls */
+#tb-wc{margin-left:auto}
+.wc-btn{
+  background:transparent;border:none;color:var(--t3);width:40px;height:38px;
+  font-size:13px;cursor:pointer;transition:background 0.1s;
+  display:flex;align-items:center;justify-content:center;-webkit-app-region:no-drag;
+}
+.wc-btn:hover{background:rgba(255,255,255,0.06);color:var(--t1)}
+#wc-close:hover{background:#f0455a!important;color:#fff!important}
+
+/* ── Left drawing toolbar ── */
+#draw-toolbar{
+  position:absolute;left:0;top:38px;bottom:0;width:36px;
+  background:var(--bg1);border-right:1px solid var(--b1);
+  display:flex;flex-direction:column;align-items:center;
+  padding:6px 0;gap:2px;z-index:50;
+}
+.draw-btn{
+  width:28px;height:28px;background:transparent;border:none;
+  color:var(--t3);font-size:14px;cursor:pointer;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.1s;position:relative;
+}
+.draw-btn:hover{background:rgba(255,255,255,0.06);color:var(--t2)}
+.draw-btn.active{background:var(--accent-dim);color:var(--accent)}
+.draw-btn title{display:none}
+.draw-sep{width:20px;height:1px;background:var(--b1);margin:4px 0;flex-shrink:0}
+
+/* ── Chart area ── */
+#chart-area{
+  position:absolute;left:36px;top:38px;right:0;bottom:0;
+  display:flex;flex-direction:column;
+}
+#main-chart{flex:1;min-height:0;position:relative}
+#sub-chart{height:120px;flex-shrink:0;border-top:1px solid var(--b1);position:relative;display:none}
+#sub-chart.visible{display:block}
+#sub-chart-label{
+  position:absolute;top:4px;left:8px;font-size:9px;color:var(--t3);
+  font-weight:600;letter-spacing:0.1em;z-index:10;pointer-events:none;
+}
+
+/* ── Indicator panel ── */
+#ind-panel{
+  position:absolute;right:0;top:38px;width:200px;bottom:0;
+  background:var(--bg1);border-left:1px solid var(--b2);
+  overflow-y:auto;z-index:60;display:none;
+  flex-direction:column;
+}
+#ind-panel.open{display:flex}
+#ind-panel-hdr{
+  padding:10px 12px;border-bottom:1px solid var(--b1);
+  font-size:9px;font-weight:700;letter-spacing:0.15em;color:var(--t3);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.ind-group-hdr{font-size:8px;color:var(--t4);letter-spacing:0.15em;padding:8px 12px 3px;text-transform:uppercase}
+.ind-item{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 12px;cursor:pointer;transition:background 0.1s;font-size:10px;
+}
+.ind-item:hover{background:rgba(255,255,255,0.03)}
+.ind-item.active{color:var(--accent)}
+.ind-check{width:14px;height:14px;border:1px solid var(--b2);border-radius:2px;
+  display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0}
+.ind-item.active .ind-check{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+
+/* ── Dropdowns ── */
+.dropdown{
+  position:fixed;z-index:9999;background:var(--bg2);border:1px solid var(--b3);
+  border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,0.7);
+  min-width:140px;overflow:hidden;
+}
+.dd-item{
+  padding:7px 14px;font-size:11px;cursor:pointer;color:var(--t2);
+  font-family:var(--mono);transition:background 0.08s;display:flex;align-items:center;gap:8px;
+}
+.dd-item:hover{background:rgba(255,255,255,0.05);color:var(--t1)}
+.dd-item.active{color:var(--accent)}
+.dd-sep{border-top:1px solid var(--b1);margin:3px 0}
+
+/* ── Crosshair info box ── */
+#crosshair-box{
+  position:absolute;top:6px;left:8px;z-index:20;
+  background:rgba(12,16,21,0.92);border:1px solid var(--b2);
+  border-radius:4px;padding:5px 10px;font-size:10px;
+  display:none;pointer-events:none;
+}
+.cb-row{display:flex;gap:12px}
+.cb-item{display:flex;gap:4px}
+.cb-l{color:var(--t4);font-size:9px}
+.cb-v{color:var(--t1);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<!-- Titlebar -->
+<div id="titlebar">
+  <div class="tb-section" id="tb-left">
+    <input id="tb-ticker-input" type="text" placeholder="Symbol" maxlength="12" autocomplete="off" spellcheck="false">
+    <button id="tb-go">GO</button>
+  </div>
+  <div class="tb-section" id="tb-tf">
+    <button class="tf-btn" data-tf="1Min">1m</button>
+    <button class="tf-btn" data-tf="5Min">5m</button>
+    <button class="tf-btn" data-tf="15Min">15m</button>
+    <button class="tf-btn" data-tf="30Min">30m</button>
+    <button class="tf-btn" data-tf="1Hour">1h</button>
+    <button class="tf-btn" data-tf="4Hour">4h</button>
+    <button class="tf-btn active" data-tf="1Day">D</button>
+    <button class="tf-btn" data-tf="1Week">W</button>
+  </div>
+  <div class="tb-section" id="tb-type">
+    <button class="ct-btn active" data-ct="candle" title="Candlestick">▤</button>
+    <button class="ct-btn" data-ct="line"   title="Line">╱</button>
+    <button class="ct-btn" data-ct="area"   title="Area">◿</button>
+    <button class="ct-btn" data-ct="bar"    title="Bar">╫</button>
+  </div>
+  <div class="tb-section" id="tb-tools">
+    <button class="tool-btn" id="btn-indicators">Indicators</button>
+    <button class="tool-btn" id="btn-compare">Compare</button>
+  </div>
+  <div class="tb-section" id="tb-ohlcv">
+    <div class="ohlcv-item"><span class="ohlcv-lbl">O</span><span class="ohlcv-val" id="ov-o">—</span></div>
+    <div class="ohlcv-item"><span class="ohlcv-lbl">H</span><span class="ohlcv-val" id="ov-h">—</span></div>
+    <div class="ohlcv-item"><span class="ohlcv-lbl">L</span><span class="ohlcv-val" id="ov-l">—</span></div>
+    <div class="ohlcv-item"><span class="ohlcv-lbl">C</span><span class="ohlcv-val" id="ov-c">—</span></div>
+    <div class="ohlcv-item"><span class="ohlcv-lbl">V</span><span class="ohlcv-val" id="ov-v">—</span></div>
+    <span id="ohlcv-chg"></span>
+  </div>
+  <div class="tb-section" id="tb-live">
+    <div id="live-dot" style="display:none"></div>
+    <span id="live-price"></span>
+    <span id="live-chg"></span>
+  </div>
+  <div class="tb-section" id="tb-wc">
+    <button class="wc-btn" id="wc-min">&#8722;</button>
+    <button class="wc-btn" id="wc-max">&#9633;</button>
+    <button class="wc-btn" id="wc-close">&#10005;</button>
+  </div>
+</div>
+
+<!-- Drawing toolbar -->
+<div id="draw-toolbar">
+  <button class="draw-btn active" data-tool="cursor" title="Cursor">⊹</button>
+  <div class="draw-sep"></div>
+  <button class="draw-btn" data-tool="trendline" title="Trendline">╱</button>
+  <button class="draw-btn" data-tool="hline"     title="Horizontal Line">—</button>
+  <button class="draw-btn" data-tool="vline"     title="Vertical Line">|</button>
+  <button class="draw-btn" data-tool="rect"      title="Rectangle">▭</button>
+  <button class="draw-btn" data-tool="fib"       title="Fibonacci">φ</button>
+  <div class="draw-sep"></div>
+  <button class="draw-btn" data-tool="text"      title="Text">T</button>
+  <div class="draw-sep"></div>
+  <button class="draw-btn" id="btn-clear-draws"  title="Clear All">⌫</button>
+</div>
+
+<!-- Chart area -->
+<div id="chart-area">
+  <div id="main-chart">
+    <div id="crosshair-box">
+      <div class="cb-row">
+        <div class="cb-item"><span class="cb-l">O</span><span class="cb-v" id="cb-o">—</span></div>
+        <div class="cb-item"><span class="cb-l">H</span><span class="cb-v" id="cb-h">—</span></div>
+        <div class="cb-item"><span class="cb-l">L</span><span class="cb-v" id="cb-l">—</span></div>
+        <div class="cb-item"><span class="cb-l">C</span><span class="cb-v" id="cb-c">—</span></div>
+        <div class="cb-item"><span class="cb-l">V</span><span class="cb-v" id="cb-v">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="sub-chart"><div id="sub-chart-label">VOL</div></div>
+</div>
+
+<!-- Indicator panel -->
+<div id="ind-panel">
+  <div id="ind-panel-hdr">
+    INDICATORS
+    <button onclick="closeIndPanel()" style="background:none;border:none;color:var(--t3);cursor:pointer;font-size:14px">✕</button>
+  </div>
+  <div class="ind-group-hdr">Trend</div>
+  <div class="ind-item" data-ind="sma20">  <span>SMA 20</span>  <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="sma50">  <span>SMA 50</span>  <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="sma200"> <span>SMA 200</span> <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="ema20">  <span>EMA 20</span>  <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="ema50">  <span>EMA 50</span>  <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="bb">     <span>Bollinger Bands</span><div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="vwap">   <span>VWAP</span>    <div class="ind-check"></div></div>
+  <div class="ind-group-hdr">Oscillators</div>
+  <div class="ind-item active" data-ind="vol">   <span>Volume</span>    <div class="ind-check">✓</div></div>
+  <div class="ind-item" data-ind="rsi">    <span>RSI 14</span>   <div class="ind-check"></div></div>
+  <div class="ind-item" data-ind="macd">   <span>MACD</span>     <div class="ind-check"></div></div>
+</div>
+
+<script>
+const API    = 'http://localhost:8000';
+const params = new URLSearchParams(location.search);
+let sym      = (params.get('ticker') || 'SPY').toUpperCase();
+let tf       = '1Day';
+let chartType= 'candle';
+let activeTool = 'cursor';
+let activeInds = new Set(['vol']);
+
+// Chart instances
+let mainChart, candleSeries, lineSeries, areaSeries, barSeries, volSeries;
+let subChart, subVolSeries, rsiSeries, macdSeries, macdSignalSeries, macdHistSeries;
+let smaSeries={}, emaSeries={}, bbSeries={upper:null,lower:null,mid:null}, vwapSeries;
+let priceLines = [];
+let candles = [];
+let liveSSE = null;
+
+// ── Window controls ───────────────────────────────────────────────────────────
+if (window.electronAPI) {
+  document.getElementById('wc-min').onclick   = () => electronAPI.minimize();
+  document.getElementById('wc-max').onclick   = () => electronAPI.maximize();
+  document.getElementById('wc-close').onclick = () => electronAPI.closeWindow();
+} else {
+  document.getElementById('tb-wc').style.display = 'none';
+}
+
+// ── Ticker input ──────────────────────────────────────────────────────────────
+const tickerInput = document.getElementById('tb-ticker-input');
+tickerInput.value = sym;
+document.getElementById('tb-go').onclick = () => loadSymbol(tickerInput.value.trim().toUpperCase() || sym);
+tickerInput.onkeydown = e => { if (e.key === 'Enter') loadSymbol(tickerInput.value.trim().toUpperCase() || sym); };
+
+// ── Timeframe buttons ─────────────────────────────────────────────────────────
+document.querySelectorAll('.tf-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    tf = btn.dataset.tf;
+    loadCandles();
+  };
+});
+
+// ── Chart type buttons ────────────────────────────────────────────────────────
+document.querySelectorAll('.ct-btn').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.ct-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    chartType = btn.dataset.ct;
+    updateChartType();
+  };
+});
+
+// ── Drawing tool buttons ──────────────────────────────────────────────────────
+document.querySelectorAll('.draw-btn[data-tool]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.draw-btn[data-tool]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeTool = btn.dataset.tool;
+  };
+});
+document.getElementById('btn-clear-draws').onclick = clearDrawings;
+
+// ── Indicator panel ───────────────────────────────────────────────────────────
+document.getElementById('btn-indicators').onclick = () => {
+  const p = document.getElementById('ind-panel');
+  p.classList.toggle('open');
+  document.getElementById('btn-indicators').classList.toggle('active');
+  setTimeout(resizeCharts, 10);
+};
+function closeIndPanel() {
+  document.getElementById('ind-panel').classList.remove('open');
+  document.getElementById('btn-indicators').classList.remove('active');
+  setTimeout(resizeCharts, 10);
+}
+document.querySelectorAll('.ind-item').forEach(item => {
+  item.onclick = () => {
+    const ind = item.dataset.ind;
+    if (activeInds.has(ind)) {
+      activeInds.delete(ind);
+      item.classList.remove('active');
+      item.querySelector('.ind-check').textContent = '';
+      removeIndicator(ind);
+    } else {
+      activeInds.add(ind);
+      item.classList.add('active');
+      item.querySelector('.ind-check').textContent = '✓';
+      addIndicator(ind);
+    }
+  };
+});
+
+// ── Init charts ───────────────────────────────────────────────────────────────
+function initCharts() {
+  const mainEl = document.getElementById('main-chart');
+  mainChart = LightweightCharts.createChart(mainEl, {
+    layout:{ background:{color:'#080b0e'}, textColor:'#8fa4b8' },
+    grid:{ vertLines:{color:'rgba(255,255,255,0.03)'}, horzLines:{color:'rgba(255,255,255,0.03)'} },
+    crosshair:{ mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine:{color:'rgba(255,255,255,0.2)',labelBackgroundColor:'#16202a'},
+      horzLine:{color:'rgba(255,255,255,0.2)',labelBackgroundColor:'#16202a'} },
+    rightPriceScale:{ borderColor:'rgba(255,255,255,0.06)', scaleMargins:{top:0.1,bottom:0.1} },
+    timeScale:{ borderColor:'rgba(255,255,255,0.06)', timeVisible:true, secondsVisible:false },
+    width: mainEl.offsetWidth, height: mainEl.offsetHeight,
+  });
+
+  // All series created upfront, shown/hidden by chart type
+  candleSeries = mainChart.addCandlestickSeries({
+    upColor:'#00e5a0', downColor:'#f0455a',
+    borderUpColor:'#00e5a0', borderDownColor:'#f0455a',
+    wickUpColor:'#00e5a0', wickDownColor:'#f0455a',
+  });
+  lineSeries = mainChart.addLineSeries({ color:'#00e5a0', lineWidth:2, visible:false });
+  areaSeries = mainChart.addAreaSeries({
+    topColor:'rgba(0,229,160,0.3)', bottomColor:'rgba(0,229,160,0.0)',
+    lineColor:'#00e5a0', lineWidth:2, visible:false,
+  });
+  barSeries = mainChart.addBarSeries({ upColor:'#00e5a0', downColor:'#f0455a', visible:false });
+
+  // Crosshair readout
+  mainChart.subscribeCrosshairMove(param => {
+    if (!param.time || !param.seriesData) { document.getElementById('crosshair-box').style.display='none'; return; }
+    const d = param.seriesData.get(candleSeries) || param.seriesData.get(lineSeries);
+    if (!d) return;
+    const box = document.getElementById('crosshair-box');
+    box.style.display = 'block';
+    const fmt = v => v != null ? v.toFixed(2) : '—';
+    document.getElementById('cb-o').textContent = fmt(d.open  ?? d.value);
+    document.getElementById('cb-h').textContent = fmt(d.high  ?? d.value);
+    document.getElementById('cb-l').textContent = fmt(d.low   ?? d.value);
+    document.getElementById('cb-c').textContent = fmt(d.close ?? d.value);
+    const vd = param.seriesData.get(volSeries);
+    document.getElementById('cb-v').textContent = vd ? fmtVol(vd.value) : '—';
+    // Update top OHLCV bar too
+    if (d.open != null) {
+      document.getElementById('ov-o').textContent = fmt(d.open);
+      document.getElementById('ov-h').textContent = fmt(d.high);
+      document.getElementById('ov-l').textContent = fmt(d.low);
+      document.getElementById('ov-c').textContent = fmt(d.close);
+    }
+    if (vd) document.getElementById('ov-v').textContent = fmtVol(vd.value);
+  });
+
+  // Sub chart (volume / RSI / MACD)
+  const subEl = document.getElementById('sub-chart');
+  subChart = LightweightCharts.createChart(subEl, {
+    layout:{ background:{color:'#080b0e'}, textColor:'#8fa4b8' },
+    grid:{ vertLines:{color:'rgba(255,255,255,0.03)'}, horzLines:{color:'rgba(255,255,255,0.03)'} },
+    rightPriceScale:{ borderColor:'rgba(255,255,255,0.06)', scaleMargins:{top:0.1,bottom:0.1} },
+    timeScale:{ borderColor:'rgba(255,255,255,0.06)', timeVisible:false },
+    crosshair:{ mode: LightweightCharts.CrosshairMode.Normal },
+    width: subEl.offsetWidth, height: subEl.offsetHeight,
+  });
+  volSeries = subChart.addHistogramSeries({
+    color:'rgba(0,229,160,0.4)', priceFormat:{type:'volume'}, priceScaleId:'',
+    scaleMargins:{top:0,bottom:0},
+  });
+  rsiSeries  = subChart.addLineSeries({ color:'#f5c842', lineWidth:1, visible:false });
+  macdSeries       = subChart.addLineSeries({ color:'#00e5a0', lineWidth:1, visible:false });
+  macdSignalSeries = subChart.addLineSeries({ color:'#f0455a', lineWidth:1, visible:false });
+  macdHistSeries   = subChart.addHistogramSeries({ visible:false });
+
+  // Sync timescales
+  mainChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (range) subChart.timeScale().setVisibleLogicalRange(range);
+  });
+  subChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (range) mainChart.timeScale().setVisibleLogicalRange(range);
+  });
+
+  // Resize observer
+  new ResizeObserver(resizeCharts).observe(document.getElementById('chart-area'));
+}
+
+function resizeCharts() {
+  const area   = document.getElementById('chart-area');
+  const main   = document.getElementById('main-chart');
+  const sub    = document.getElementById('sub-chart');
+  const indOpen = document.getElementById('ind-panel').classList.contains('open');
+  const rightW  = indOpen ? 200 : 0;
+  const areaW   = area.offsetWidth;
+  const areaH   = area.offsetHeight;
+  const subH    = sub.classList.contains('visible') ? 120 : 0;
+  const mainH   = areaH - subH;
+  mainChart?.applyOptions({ width: areaW - rightW, height: mainH });
+  subChart?.applyOptions({ width: areaW - rightW, height: subH || 1 });
+}
+
+// ── Load symbol ───────────────────────────────────────────────────────────────
+async function loadSymbol(s) {
+  sym = s;
+  tickerInput.value = sym;
+  document.title = `Chart · ${sym} — Terminal Pro`;
+  if (window.electronAPI) electronAPI.updateTicker && electronAPI.updateTicker(0, sym).catch(()=>{});
+  stopLive();
+  await loadCandles();
+  startLive();
+}
+
+// ── Load candles ──────────────────────────────────────────────────────────────
+const TF_PERIOD = {
+  '1Min':'1d','5Min':'5d','15Min':'5d','30Min':'1mo',
+  '1Hour':'3mo','4Hour':'6mo','1Day':'1y','1Week':'5y'
+};
+async function loadCandles() {
+  try {
+    const period = TF_PERIOD[tf] || '1y';
+    // Use ohlc-intraday for intraday, ohlc for daily+
+    const isIntraday = ['1Min','5Min','15Min','30Min','1Hour','4Hour'].includes(tf);
+    const url = isIntraday
+      ? `${API}/ohlc-intraday/${sym}?period=${period}`
+      : `${API}/ohlc/${sym}?period=${period}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    const dates = data.dates || [];
+    if (!dates.length) return;
+
+    candles = dates.map((t, i) => ({
+      time:   t,
+      open:   data.open[i],
+      high:   data.high[i],
+      low:    data.low[i],
+      close:  data.close[i],
+      volume: data.volumes?.[i] ?? 0,
+    }));
+
+    setAllSeries(candles);
+    updateOHLCV(candles[candles.length - 1]);
+    computeAndSetIndicators();
+    mainChart.timeScale().fitContent();
+  } catch(e) { console.error('loadCandles:', e); }
+}
+
+function setAllSeries(data) {
+  const cData = data.map(d => ({ time:d.time, open:d.open, high:d.high, low:d.low, close:d.close }));
+  const lData = data.map(d => ({ time:d.time, value:d.close }));
+  const vData = data.map(d => ({ time:d.time, value:d.volume, color: d.close>=d.open?'rgba(0,229,160,0.45)':'rgba(240,69,90,0.45)' }));
+  candleSeries.setData(cData);
+  lineSeries.setData(lData);
+  areaSeries.setData(lData);
+  barSeries.setData(cData);
+  volSeries.setData(vData);
+}
+
+// ── Chart type toggle ─────────────────────────────────────────────────────────
+function updateChartType() {
+  candleSeries.applyOptions({ visible: chartType === 'candle' });
+  lineSeries.applyOptions({   visible: chartType === 'line'   });
+  areaSeries.applyOptions({   visible: chartType === 'area'   });
+  barSeries.applyOptions({    visible: chartType === 'bar'    });
+}
+
+// ── Indicators ────────────────────────────────────────────────────────────────
+function computeAndSetIndicators() {
+  if (!candles.length) return;
+  activeInds.forEach(ind => addIndicator(ind));
+}
+
+function addIndicator(ind) {
+  const closes = candles.map(c => c.close);
+  const times  = candles.map(c => c.time);
+
+  if (ind === 'vol') {
+    document.getElementById('sub-chart').classList.add('visible');
+    document.getElementById('sub-chart-label').textContent = 'VOL';
+    volSeries.applyOptions({ visible: true });
+    rsiSeries.applyOptions({ visible: false });
+    macdSeries.applyOptions({ visible: false });
+    macdSignalSeries.applyOptions({ visible: false });
+    macdHistSeries.applyOptions({ visible: false });
+    resizeCharts();
+    return;
+  }
+  if (ind === 'rsi') {
+    const rsi = calcRSI(closes, 14);
+    rsiSeries.setData(rsi.map((v,i) => ({ time: times[i+14], value: v })));
+    rsiSeries.applyOptions({ visible: true });
+    volSeries.applyOptions({ visible: false });
+    document.getElementById('sub-chart').classList.add('visible');
+    document.getElementById('sub-chart-label').textContent = 'RSI 14';
+    resizeCharts();
+    return;
+  }
+  if (ind === 'macd') {
+    const { macd, signal, hist } = calcMACD(closes);
+    const offset = 26;
+    macdSeries.setData(macd.map((v,i) => ({ time: times[i+offset], value: v })));
+    macdSignalSeries.setData(signal.map((v,i) => ({ time: times[i+offset+9], value: v })));
+    macdHistSeries.setData(hist.map((v,i) => ({ time: times[i+offset+9], value: v, color: v>=0?'rgba(0,229,160,0.6)':'rgba(240,69,90,0.6)' })));
+    macdSeries.applyOptions({ visible: true });
+    macdSignalSeries.applyOptions({ visible: true });
+    macdHistSeries.applyOptions({ visible: true });
+    volSeries.applyOptions({ visible: false });
+    document.getElementById('sub-chart').classList.add('visible');
+    document.getElementById('sub-chart-label').textContent = 'MACD';
+    resizeCharts();
+    return;
+  }
+  if (ind === 'sma20')  addSMA(20,  '#4b9fff');
+  if (ind === 'sma50')  addSMA(50,  '#f5c842');
+  if (ind === 'sma200') addSMA(200, '#9b6dff');
+  if (ind === 'ema20')  addEMA(20,  '#ff8f3f');
+  if (ind === 'ema50')  addEMA(50,  '#ff6b9d');
+  if (ind === 'bb')     addBB(20, 2);
+  if (ind === 'vwap')   addVWAP();
+}
+
+function removeIndicator(ind) {
+  if (ind === 'vol') { volSeries.applyOptions({ visible: false }); checkSubVisible(); return; }
+  if (ind === 'rsi') { rsiSeries.applyOptions({ visible: false }); checkSubVisible(); return; }
+  if (ind === 'macd') {
+    macdSeries.applyOptions({ visible: false });
+    macdSignalSeries.applyOptions({ visible: false });
+    macdHistSeries.applyOptions({ visible: false });
+    checkSubVisible(); return;
+  }
+  if (ind === 'sma20'  && smaSeries[20])  { mainChart.removeSeries(smaSeries[20]);  delete smaSeries[20]; }
+  if (ind === 'sma50'  && smaSeries[50])  { mainChart.removeSeries(smaSeries[50]);  delete smaSeries[50]; }
+  if (ind === 'sma200' && smaSeries[200]) { mainChart.removeSeries(smaSeries[200]); delete smaSeries[200]; }
+  if (ind === 'ema20'  && emaSeries[20])  { mainChart.removeSeries(emaSeries[20]);  delete emaSeries[20]; }
+  if (ind === 'ema50'  && emaSeries[50])  { mainChart.removeSeries(emaSeries[50]);  delete emaSeries[50]; }
+  if (ind === 'bb') {
+    if (bbSeries.upper) mainChart.removeSeries(bbSeries.upper);
+    if (bbSeries.lower) mainChart.removeSeries(bbSeries.lower);
+    if (bbSeries.mid)   mainChart.removeSeries(bbSeries.mid);
+    bbSeries = {upper:null,lower:null,mid:null};
+  }
+  if (ind === 'vwap' && vwapSeries) { mainChart.removeSeries(vwapSeries); vwapSeries = null; }
+}
+
+function checkSubVisible() {
+  const anySubVisible = activeInds.has('vol') || activeInds.has('rsi') || activeInds.has('macd');
+  if (!anySubVisible) {
+    document.getElementById('sub-chart').classList.remove('visible');
+    resizeCharts();
+  }
+}
+
+function addSMA(period, color) {
+  const sma = calcSMA(candles.map(c=>c.close), period);
+  const times = candles.map(c=>c.time);
+  if (smaSeries[period]) mainChart.removeSeries(smaSeries[period]);
+  smaSeries[period] = mainChart.addLineSeries({ color, lineWidth:1, lineStyle:0, lastValueVisible:false, priceLineVisible:false });
+  smaSeries[period].setData(sma.map((v,i) => ({ time: times[i+period-1], value: v })));
+}
+
+function addEMA(period, color) {
+  const ema = calcEMA(candles.map(c=>c.close), period);
+  const times = candles.map(c=>c.time);
+  if (emaSeries[period]) mainChart.removeSeries(emaSeries[period]);
+  emaSeries[period] = mainChart.addLineSeries({ color, lineWidth:1, lineStyle:1, lastValueVisible:false, priceLineVisible:false });
+  emaSeries[period].setData(ema.map((v,i) => ({ time: times[i+period-1], value: v })));
+}
+
+function addBB(period, mult) {
+  const closes = candles.map(c=>c.close), times = candles.map(c=>c.time);
+  const sma = calcSMA(closes, period);
+  const upper=[], lower=[], mid=[];
+  for (let i=period-1;i<closes.length;i++) {
+    const slice = closes.slice(i-period+1, i+1);
+    const mean  = sma[i-period+1];
+    const std   = Math.sqrt(slice.reduce((s,v)=>s+(v-mean)**2,0)/period);
+    const t     = times[i];
+    upper.push({ time:t, value: mean + mult*std });
+    lower.push({ time:t, value: mean - mult*std });
+    mid.push({   time:t, value: mean });
+  }
+  if (bbSeries.upper) mainChart.removeSeries(bbSeries.upper);
+  if (bbSeries.lower) mainChart.removeSeries(bbSeries.lower);
+  if (bbSeries.mid)   mainChart.removeSeries(bbSeries.mid);
+  const bbOpts = { lineWidth:1, lastValueVisible:false, priceLineVisible:false };
+  bbSeries.upper = mainChart.addLineSeries({ ...bbOpts, color:'rgba(155,109,255,0.5)' });
+  bbSeries.lower = mainChart.addLineSeries({ ...bbOpts, color:'rgba(155,109,255,0.5)' });
+  bbSeries.mid   = mainChart.addLineSeries({ ...bbOpts, color:'rgba(155,109,255,0.8)', lineStyle:1 });
+  bbSeries.upper.setData(upper);
+  bbSeries.lower.setData(lower);
+  bbSeries.mid.setData(mid);
+}
+
+function addVWAP() {
+  if (vwapSeries) mainChart.removeSeries(vwapSeries);
+  let cumPV=0, cumV=0;
+  const data = candles.map(c => {
+    const tp = (c.high+c.low+c.close)/3;
+    cumPV += tp * c.volume;
+    cumV  += c.volume;
+    return { time: c.time, value: cumV > 0 ? cumPV/cumV : c.close };
+  });
+  vwapSeries = mainChart.addLineSeries({ color:'#ff8f3f', lineWidth:1, lineStyle:2, lastValueVisible:false, priceLineVisible:false });
+  vwapSeries.setData(data);
+}
+
+// ── Math helpers ──────────────────────────────────────────────────────────────
+function calcSMA(data, period) {
+  const result = [];
+  for (let i=period-1;i<data.length;i++) {
+    result.push(data.slice(i-period+1,i+1).reduce((a,b)=>a+b,0)/period);
+  }
+  return result;
+}
+function calcEMA(data, period) {
+  const k = 2/(period+1), result = [];
+  let ema = data.slice(0,period).reduce((a,b)=>a+b,0)/period;
+  result.push(ema);
+  for (let i=period;i<data.length;i++) { ema = data[i]*k + ema*(1-k); result.push(ema); }
+  return result;
+}
+function calcRSI(data, period) {
+  const result=[], changes=data.slice(1).map((v,i)=>v-data[i]);
+  let avgG=0, avgL=0;
+  for(let i=0;i<period;i++){
+    if(changes[i]>0) avgG+=changes[i]; else avgL+=Math.abs(changes[i]);
+  }
+  avgG/=period; avgL/=period;
+  result.push(avgL===0?100:100-(100/(1+avgG/avgL)));
+  for(let i=period;i<changes.length;i++){
+    const g=changes[i]>0?changes[i]:0, l=changes[i]<0?Math.abs(changes[i]):0;
+    avgG=(avgG*(period-1)+g)/period; avgL=(avgL*(period-1)+l)/period;
+    result.push(avgL===0?100:100-(100/(1+avgG/avgL)));
+  }
+  return result;
+}
+function calcMACD(data, fast=12, slow=26, signal=9) {
+  const emaF=calcEMA(data,fast), emaS=calcEMA(data,slow);
+  const offset=slow-fast;
+  const macd=emaS.map((_,i)=>emaF[i+offset]-emaS[i]);
+  const sig=calcEMA(macd,signal);
+  const hist=sig.map((v,i)=>macd[i+signal-1]-v);
+  return { macd, signal:sig, hist };
+}
+
+// ── Live price via SSE ────────────────────────────────────────────────────────
+function startLive() {
+  stopLive();
+  liveSSE = new EventSource(`${API}/live/${sym}`);
+  const dot = document.getElementById('live-dot');
+  const price = document.getElementById('live-price');
+  const chg   = document.getElementById('live-chg');
+  dot.style.display = 'block';
+  let basePrice = candles.length ? candles[candles.length-1].close : null;
+  liveSSE.onmessage = e => {
+    try {
+      const d = JSON.parse(e.data);
+      const p = d.price || d.last || d[sym]?.price;
+      if (!p) return;
+      price.textContent = '$' + p.toFixed(2);
+      if (basePrice) {
+        const pct = ((p - basePrice)/basePrice*100);
+        chg.textContent = (pct>=0?'+':'') + pct.toFixed(2) + '%';
+        chg.style.color = pct >= 0 ? 'var(--accent)' : 'var(--red)';
+      }
+      // Update last candle with live price
+      if (candles.length) {
+        const last = candles[candles.length-1];
+        const updated = { time:last.time, open:last.open, high:Math.max(last.high,p), low:Math.min(last.low,p), close:p };
+        candleSeries.update(updated);
+        lineSeries.update({ time:last.time, value:p });
+        areaSeries.update({ time:last.time, value:p });
+        document.getElementById('ov-c').textContent = p.toFixed(2);
+        document.getElementById('ov-h').textContent = updated.high.toFixed(2);
+        document.getElementById('ov-l').textContent = updated.low.toFixed(2);
+      }
+    } catch{}
+  };
+  liveSSE.onerror = () => { dot.style.display='none'; };
+}
+function stopLive() {
+  if (liveSSE) { liveSSE.close(); liveSSE=null; }
+  document.getElementById('live-dot').style.display = 'none';
+  document.getElementById('live-price').textContent = '';
+  document.getElementById('live-chg').textContent = '';
+}
+
+// ── Drawing tools ─────────────────────────────────────────────────────────────
+function clearDrawings() {
+  priceLines.forEach(pl => { try { candleSeries.removePriceLine(pl); } catch{} });
+  priceLines = [];
+}
+
+// Simple horizontal line drawing on click
+mainChart && mainChart.subscribeClick && setTimeout(() => {
+  mainChart.subscribeClick(param => {
+    if (activeTool !== 'hline') return;
+    if (!param.point) return;
+    const price = mainChart.priceScale('right').coordinateToPrice(param.point.y);
+    if (!price) return;
+    const pl = candleSeries.createPriceLine({ price, color:'rgba(0,229,160,0.6)', lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'' });
+    priceLines.push(pl);
+  });
+}, 500);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function updateOHLCV(c) {
+  if (!c) return;
+  document.getElementById('ov-o').textContent = c.open.toFixed(2);
+  document.getElementById('ov-h').textContent = c.high.toFixed(2);
+  document.getElementById('ov-l').textContent = c.low.toFixed(2);
+  document.getElementById('ov-c').textContent = c.close.toFixed(2);
+  document.getElementById('ov-v').textContent = fmtVol(c.volume);
+  const pct = ((c.close-c.open)/c.open*100);
+  const chgEl = document.getElementById('ohlcv-chg');
+  chgEl.textContent = (pct>=0?'+':'') + pct.toFixed(2)+'%';
+  chgEl.style.color = pct>=0 ? 'var(--accent)' : 'var(--red)';
+}
+function fmtVol(v) {
+  if (!v) return '—';
+  if (v>=1e9) return (v/1e9).toFixed(1)+'B';
+  if (v>=1e6) return (v/1e6).toFixed(1)+'M';
+  if (v>=1e3) return (v/1e3).toFixed(1)+'K';
+  return v.toString();
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+initCharts();
+// Show volume sub-chart by default
+document.getElementById('sub-chart').classList.add('visible');
+resizeCharts();
+loadSymbol(sym);
+</script>
+</body>
+</html>

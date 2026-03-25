@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terminal Pro — Professional Stock Research</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg:      #060a0f;
+  --bg1:     #0a0f16;
+  --bg2:     #0f1720;
+  --bg3:     #162030;
+  --accent:  #00e5a0;
+  --accent2: #00b87a;
+  --blue:    #4b9fff;
+  --red:     #f0455a;
+  --t1:      #f0f4f8;
+  --t2:      #8fa4b8;
+  --t3:      #3d5468;
+  --b1:      rgba(255,255,255,0.05);
+  --b2:      rgba(255,255,255,0.08);
+  --mono:    'DM Mono', monospace;
+  --sans:    'Instrument Sans', sans-serif;
+  --display: 'Syne', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--t1);
+  font-family: var(--sans);
+  overflow-x: hidden;
+  cursor: default;
+}
+
+/* ── NOISE OVERLAY ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--b2); border-radius: 2px; }
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 48px;
+  height: 60px;
+  background: rgba(6, 10, 15, 0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--b1);
+}
+.nav-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: var(--t1);
+  text-decoration: none;
+}
+.nav-logo-mark {
+  width: 26px; height: 26px;
+  background: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: #000;
+  border-radius: 4px;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  list-style: none;
+}
+.nav-links a {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--t2);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  transition: color 0.15s;
+}
+.nav-links a:hover { color: var(--t1); }
+.nav-cta {
+  background: var(--accent);
+  color: #000 !important;
+  padding: 7px 18px;
+  border-radius: 4px;
+  font-weight: 600 !important;
+  transition: all 0.15s !important;
+}
+.nav-cta:hover {
+  background: var(--accent2) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0,229,160,0.25);
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 120px 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Radial glow */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 500px;
+  background: radial-gradient(ellipse, rgba(0,229,160,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Grid lines */
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent);
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,229,160,0.08);
+  border: 1px solid rgba(0,229,160,0.2);
+  border-radius: 100px;
+  padding: 5px 14px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  margin-bottom: 32px;
+  animation: fadeUp 0.6s ease both;
+}
+.eyebrow-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.7); }
+}
+
+.hero h1 {
+  font-family: var(--display);
+  font-size: clamp(48px, 8vw, 96px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  margin-bottom: 28px;
+  animation: fadeUp 0.6s 0.1s ease both;
+}
+.hero h1 em {
+  font-style: normal;
+  color: var(--accent);
+  position: relative;
+}
+.hero h1 em::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 2px;
+}
+
+.hero-sub {
+  font-size: 17px;
+  color: var(--t2);
+  line-height: 1.7;
+  max-width: 520px;
+  margin: 0 auto 48px;
+  font-weight: 400;
+  animation: fadeUp 0.6s 0.2s ease both;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: fadeUp 0.6s 0.3s ease both;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  padding: 14px 32px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 5px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.btn-primary:hover {
+  background: var(--accent2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(0,229,160,0.3);
+}
+.btn-primary .arrow {
+  transition: transform 0.2s;
+}
+.btn-primary:hover .arrow { transform: translateX(3px); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--t2);
+  border: 1px solid var(--b2);
+  padding: 14px 28px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: 5px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.btn-ghost:hover {
+  color: var(--t1);
+  border-color: rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.03);
+}
+
+.hero-price-note {
+  margin-top: 20px;
+  font-size: 11px;
+  color: var(--t3);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  animation: fadeUp 0.6s 0.4s ease both;
+}
+
+/* ── TICKER STRIP ── */
+.ticker-strip {
+  border-top: 1px solid var(--b1);
+  border-bottom: 1px solid var(--b1);
+  padding: 12px 0;
+  overflow: hidden;
+  background: var(--bg1);
+}
+.ticker-inner {
+  display: inline-flex;
+  animation: scroll 40s linear infinite;
+  white-space: nowrap;
+}
+.ticker-inner:hover { animation-play-state: paused; }
+.tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 28px;
+  border-right: 1px solid var(--b1);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+.tick-sym { color: var(--t2); font-weight: 500; }
+.tick-price { color: var(--t1); }
+.tick-up { color: var(--accent); }
+.tick-down { color: var(--red); }
+@keyframes scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ── SECTION ── */
+section { padding: 100px 24px; }
+.container { max-width: 1100px; margin: 0 auto; }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+  display: block;
+}
+.section-title {
+  font-family: var(--display);
+  font-size: clamp(32px, 5vw, 52px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-bottom: 16px;
+}
+.section-sub {
+  font-size: 15px;
+  color: var(--t2);
+  line-height: 1.7;
+  max-width: 480px;
+}
+
+/* ── FEATURES BENTO ── */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 10px;
+  margin-top: 60px;
+}
+.bento-card {
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 8px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.bento-card:hover {
+  border-color: rgba(0,229,160,0.2);
+  transform: translateY(-2px);
+}
+.bento-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,229,160,0.3), transparent);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.bento-card:hover::before { opacity: 1; }
+
+.bc-1  { grid-column: span 7; }
+.bc-2  { grid-column: span 5; }
+.bc-3  { grid-column: span 4; }
+.bc-4  { grid-column: span 4; }
+.bc-5  { grid-column: span 4; }
+.bc-6  { grid-column: span 5; }
+.bc-7  { grid-column: span 7; }
+
+.bento-icon {
+  width: 36px; height: 36px;
+  background: rgba(0,229,160,0.08);
+  border: 1px solid rgba(0,229,160,0.15);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  margin-bottom: 18px;
+  font-family: var(--mono);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+}
+.bento-title {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  letter-spacing: -0.01em;
+}
+.bento-desc {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.65;
+}
+
+/* Mini chart in bento */
+.mini-chart {
+  margin-top: 20px;
+  height: 60px;
+  position: relative;
+}
+.mini-chart svg { width: 100%; height: 100%; overflow: visible; }
+
+/* Stat display */
+.bento-stat {
+  margin-top: 20px;
+  font-family: var(--mono);
+  font-size: 36px;
+  font-weight: 300;
+  color: var(--accent);
+  line-height: 1;
+}
+.bento-stat-label {
+  font-size: 10px;
+  color: var(--t3);
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 4px;
+}
+
+/* Fake table */
+.mini-table {
+  margin-top: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.mini-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--b1);
+  color: var(--t2);
+}
+.mini-row:last-child { border-bottom: none; }
+.mini-row span:first-child { color: var(--accent); font-weight: 500; }
+.mini-row .up { color: var(--accent); }
+.mini-row .dn { color: var(--red); }
+
+/* Tag pills */
+.bento-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+}
+.btag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 3px 9px;
+  border-radius: 3px;
+  border: 1px solid var(--b2);
+  color: var(--t3);
+}
+.btag.active {
+  color: var(--accent);
+  background: rgba(0,229,160,0.07);
+  border-color: rgba(0,229,160,0.2);
+}
+
+/* ── PRICING ── */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 700px;
+  margin: 60px auto 0;
+}
+.pricing-card {
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 10px;
+  padding: 36px;
+  position: relative;
+  transition: all 0.2s;
+}
+.pricing-card.featured {
+  border-color: rgba(0,229,160,0.3);
+  background: linear-gradient(135deg, rgba(0,229,160,0.05), var(--bg2));
+}
+.pricing-card.featured::before {
+  content: 'MOST POPULAR';
+  position: absolute;
+  top: -1px; left: 50%; transform: translateX(-50%);
+  background: var(--accent);
+  color: #000;
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  padding: 3px 12px;
+  border-radius: 0 0 6px 6px;
+}
+.plan-name {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--t3);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.plan-price {
+  font-family: var(--display);
+  font-size: 52px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+.plan-price sup {
+  font-size: 20px;
+  font-weight: 500;
+  vertical-align: top;
+  margin-top: 10px;
+  display: inline-block;
+  color: var(--t2);
+}
+.plan-period {
+  font-size: 12px;
+  color: var(--t3);
+  font-family: var(--mono);
+  margin-bottom: 28px;
+}
+.plan-features {
+  list-style: none;
+  margin-bottom: 32px;
+}
+.plan-features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--t2);
+  padding: 6px 0;
+  border-bottom: 1px solid var(--b1);
+  line-height: 1.4;
+}
+.plan-features li:last-child { border-bottom: none; }
+.plan-features li::before {
+  content: '+';
+  color: var(--accent);
+  font-family: var(--mono);
+  font-weight: 600;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.plan-features li.dim { color: var(--t3); }
+.plan-features li.dim::before { color: var(--t3); }
+
+.btn-plan {
+  width: 100%;
+  padding: 13px;
+  border-radius: 5px;
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  display: block;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-plan-ghost {
+  background: transparent;
+  border: 1px solid var(--b2);
+  color: var(--t2);
+}
+.btn-plan-ghost:hover {
+  border-color: rgba(255,255,255,0.15);
+  color: var(--t1);
+  background: rgba(255,255,255,0.03);
+}
+.btn-plan-solid {
+  background: var(--accent);
+  color: #000;
+}
+.btn-plan-solid:hover {
+  background: var(--accent2);
+  box-shadow: 0 8px 24px rgba(0,229,160,0.3);
+  transform: translateY(-1px);
+}
+
+/* ── STATS ROW ── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--b1);
+  border: 1px solid var(--b1);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 80px;
+}
+.stat-item {
+  background: var(--bg1);
+  padding: 32px 28px;
+  text-align: center;
+}
+.stat-value {
+  font-family: var(--display);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--t1);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-value span { color: var(--accent); }
+.stat-label {
+  font-size: 12px;
+  color: var(--t3);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+/* ── TESTIMONIALS ── */
+.testimonials {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 60px;
+}
+.tcard {
+  background: var(--bg2);
+  border: 1px solid var(--b1);
+  border-radius: 8px;
+  padding: 24px;
+  transition: border-color 0.2s;
+}
+.tcard:hover { border-color: var(--b2); }
+.tcard-quote {
+  font-size: 13px;
+  color: var(--t2);
+  line-height: 1.7;
+  margin-bottom: 20px;
+  font-style: italic;
+}
+.tcard-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tcard-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: #000;
+  flex-shrink: 0;
+}
+.tcard-name { font-size: 12px; font-weight: 600; color: var(--t1); }
+.tcard-role { font-size: 10px; color: var(--t3); font-family: var(--mono); margin-top: 1px; }
+
+/* ── CTA SECTION ── */
+.cta-section {
+  text-align: center;
+  padding: 120px 24px;
+  position: relative;
+  overflow: hidden;
+}
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px; height: 400px;
+  background: radial-gradient(ellipse, rgba(0,229,160,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-section h2 {
+  font-family: var(--display);
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin-bottom: 20px;
+}
+.cta-section p {
+  font-size: 15px;
+  color: var(--t2);
+  margin-bottom: 40px;
+}
+
+/* ── FOOTER ── */
+footer {
+  border-top: 1px solid var(--b1);
+  padding: 40px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: var(--bg1);
+}
+.footer-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--t3);
+}
+.footer-links {
+  display: flex;
+  gap: 24px;
+  list-style: none;
+}
+.footer-links a {
+  font-size: 11px;
+  color: var(--t3);
+  text-decoration: none;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  transition: color 0.15s;
+}
+.footer-links a:hover { color: var(--t2); }
+.footer-copy {
+  font-size: 10px;
+  color: var(--t3);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+}
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  nav { padding: 0 24px; }
+  .nav-links { display: none; }
+  .bc-1, .bc-2, .bc-3, .bc-4, .bc-5, .bc-6, .bc-7 { grid-column: span 12; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 400px; }
+  .stats-row { grid-template-columns: 1fr 1fr; }
+  .testimonials { grid-template-columns: 1fr; }
+  footer { flex-direction: column; align-items: flex-start; padding: 32px 24px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-mark">T</div>
+    <span>TERMINAL <span style="color:var(--t3)">PRO</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="#testimonials">Reviews</a></li>
+    <li><a href="/" class="nav-cta">Launch App</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+
+  <div class="hero-eyebrow">
+    <span class="eyebrow-dot"></span>
+    Professional Stock Research Platform
+  </div>
+
+  <h1>
+    Research smarter.<br>
+    Trade with <em>conviction</em>.
+  </h1>
+
+  <p class="hero-sub">
+    Real-time quotes, AI-powered analysis, DCF modeling, and portfolio analytics — all in one sleek terminal. Built for investors who take their edge seriously.
+  </p>
+
+  <div class="hero-actions">
+    <a href="/" class="btn-primary">
+      Start for free <span class="arrow">→</span>
+    </a>
+    <a href="#features" class="btn-ghost">See features</a>
+  </div>
+
+  <p class="hero-price-note">Free to start &nbsp;·&nbsp; Pro at $3/mo &nbsp;·&nbsp; No credit card required</p>
+</section>
+
+<!-- TICKER STRIP -->
+<div class="ticker-strip">
+  <div class="ticker-inner" id="ticker-inner">
+    <span class="tick"><span class="tick-sym">AAPL</span><span class="tick-price">$211.45</span><span class="tick-up">+1.24%</span></span>
+    <span class="tick"><span class="tick-sym">NVDA</span><span class="tick-price">$875.30</span><span class="tick-up">+3.41%</span></span>
+    <span class="tick"><span class="tick-sym">MSFT</span><span class="tick-price">$418.22</span><span class="tick-up">+0.87%</span></span>
+    <span class="tick"><span class="tick-sym">TSLA</span><span class="tick-price">$187.60</span><span class="tick-down">-2.14%</span></span>
+    <span class="tick"><span class="tick-sym">AMZN</span><span class="tick-price">$196.44</span><span class="tick-up">+1.60%</span></span>
+    <span class="tick"><span class="tick-sym">META</span><span class="tick-price">$527.18</span><span class="tick-up">+0.55%</span></span>
+    <span class="tick"><span class="tick-sym">GOOGL</span><span class="tick-price">$175.90</span><span class="tick-down">-0.32%</span></span>
+    <span class="tick"><span class="tick-sym">BTC</span><span class="tick-price">$67,420</span><span class="tick-up">+2.88%</span></span>
+    <span class="tick"><span class="tick-sym">SPY</span><span class="tick-price">$524.80</span><span class="tick-up">+0.44%</span></span>
+    <span class="tick"><span class="tick-sym">GLD</span><span class="tick-price">$215.60</span><span class="tick-up">+0.19%</span></span>
+    <span class="tick"><span class="tick-sym">AMD</span><span class="tick-price">$162.30</span><span class="tick-up">+2.10%</span></span>
+    <span class="tick"><span class="tick-sym">JPM</span><span class="tick-price">$201.44</span><span class="tick-down">-0.41%</span></span>
+    <!-- duplicate for loop -->
+    <span class="tick"><span class="tick-sym">AAPL</span><span class="tick-price">$211.45</span><span class="tick-up">+1.24%</span></span>
+    <span class="tick"><span class="tick-sym">NVDA</span><span class="tick-price">$875.30</span><span class="tick-up">+3.41%</span></span>
+    <span class="tick"><span class="tick-sym">MSFT</span><span class="tick-price">$418.22</span><span class="tick-up">+0.87%</span></span>
+    <span class="tick"><span class="tick-sym">TSLA</span><span class="tick-price">$187.60</span><span class="tick-down">-2.14%</span></span>
+    <span class="tick"><span class="tick-sym">AMZN</span><span class="tick-price">$196.44</span><span class="tick-up">+1.60%</span></span>
+    <span class="tick"><span class="tick-sym">META</span><span class="tick-price">$527.18</span><span class="tick-up">+0.55%</span></span>
+    <span class="tick"><span class="tick-sym">GOOGL</span><span class="tick-price">$175.90</span><span class="tick-down">-0.32%</span></span>
+    <span class="tick"><span class="tick-sym">BTC</span><span class="tick-price">$67,420</span><span class="tick-up">+2.88%</span></span>
+    <span class="tick"><span class="tick-sym">SPY</span><span class="tick-price">$524.80</span><span class="tick-up">+0.44%</span></span>
+    <span class="tick"><span class="tick-sym">GLD</span><span class="tick-price">$215.60</span><span class="tick-up">+0.19%</span></span>
+    <span class="tick"><span class="tick-sym">AMD</span><span class="tick-price">$162.30</span><span class="tick-up">+2.10%</span></span>
+    <span class="tick"><span class="tick-sym">JPM</span><span class="tick-price">$201.44</span><span class="tick-down">-0.41%</span></span>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="reveal">
+      <span class="section-label">Features</span>
+      <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+      <p class="section-sub">Built by investors, for investors. Every feature is designed to save you time and sharpen your analysis.</p>
+    </div>
+
+    <div class="bento">
+
+      <!-- Big feature: AI Analyst -->
+      <div class="bento-card bc-1 reveal reveal-delay-1">
+        <div class="bento-icon">AI</div>
+        <div class="bento-title">AI Analyst</div>
+        <div class="bento-desc">Powered by Claude. Get institutional-grade bull/bear cases, valuation breakdowns, and risk assessments in seconds — not hours.</div>
+        <div class="bento-tags">
+          <span class="btag active">Bull Case</span>
+          <span class="btag active">Bear Case</span>
+          <span class="btag active">DCF</span>
+          <span class="btag active">Risk</span>
+          <span class="btag">Peer Compare</span>
+        </div>
+        <div style="margin-top:20px;background:var(--bg3);border:1px solid var(--b1);border-radius:6px;padding:14px">
+          <div style="font-size:9px;color:var(--accent);font-family:var(--mono);letter-spacing:0.15em;margin-bottom:8px">AI VERDICT — NVDA</div>
+          <div style="font-size:11px;color:var(--t2);font-family:var(--sans);line-height:1.6">NVIDIA's data center revenue continues to beat consensus. Blackwell architecture demand is pulling forward hyperscaler capex. <span style="color:var(--accent)">Undervalued</span> on a 3-year DCF basis despite near-term multiple compression risk.</div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <span style="background:rgba(0,229,160,0.1);border:1px solid rgba(0,229,160,0.2);color:var(--accent);font-family:var(--mono);font-size:9px;font-weight:700;padding:3px 10px;border-radius:3px;letter-spacing:0.1em">STRONG BUY</span>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--t3)">Target: $1,150</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="bento-card bc-2 reveal reveal-delay-2">
+        <div class="bento-icon">CH</div>
+        <div class="bento-title">Advanced Charts</div>
+        <div class="bento-desc">Candlestick and line charts with Bollinger Bands, EMA, RSI, and MACD overlays.</div>
+        <div class="mini-chart">
+          <svg viewBox="0 0 300 60" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#00e5a0" stop-opacity="0.15"/>
+                <stop offset="100%" stop-color="#00e5a0" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path d="M0,45 L20,42 L40,38 L60,40 L80,32 L100,28 L120,30 L140,22 L160,18 L180,20 L200,14 L220,10 L240,12 L260,8 L280,5 L300,3 L300,60 L0,60 Z" fill="url(#chartGrad)"/>
+            <path d="M0,45 L20,42 L40,38 L60,40 L80,32 L100,28 L120,30 L140,22 L160,18 L180,20 L200,14 L220,10 L240,12 L260,8 L280,5 L300,3" fill="none" stroke="#00e5a0" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Screener -->
+      <div class="bento-card bc-3 reveal reveal-delay-1">
+        <div class="bento-icon">SC</div>
+        <div class="bento-title">Stock Screener</div>
+        <div class="bento-desc">Filter 60+ S&P 500 stocks by P/E, margins, ROE, beta and more. Save your presets.</div>
+        <div class="mini-table" style="margin-top:16px">
+          <div class="mini-row"><span>NVDA</span><span class="up">+3.41%</span></div>
+          <div class="mini-row"><span>AVGO</span><span class="up">+2.10%</span></div>
+          <div class="mini-row"><span>META</span><span class="up">+0.55%</span></div>
+          <div class="mini-row"><span>INTC</span><span class="dn">-1.20%</span></div>
+        </div>
+      </div>
+
+      <!-- Portfolio -->
+      <div class="bento-card bc-4 reveal reveal-delay-2">
+        <div class="bento-icon">PF</div>
+        <div class="bento-title">Portfolio Analytics</div>
+        <div class="bento-desc">Sharpe ratio, beta, sector allocation, and correlation — know your real risk.</div>
+        <div class="bento-stat">1.84<div class="bento-stat-label">Sharpe Ratio</div></div>
+      </div>
+
+      <!-- DCF -->
+      <div class="bento-card bc-5 reveal reveal-delay-3">
+        <div class="bento-icon">DC</div>
+        <div class="bento-title">DCF Calculator</div>
+        <div class="bento-desc">Model intrinsic value with custom growth, terminal, and discount rates.</div>
+        <div class="bento-stat" style="color:var(--accent)">+24%<div class="bento-stat-label">Upside to fair value</div></div>
+      </div>
+
+      <!-- Watchlists -->
+      <div class="bento-card bc-6 reveal reveal-delay-1">
+        <div class="bento-icon">WL</div>
+        <div class="bento-title">Named Watchlists</div>
+        <div class="bento-desc">Organize stocks into multiple named lists. Syncs across your devices automatically.</div>
+        <div class="bento-tags" style="margin-top:16px">
+          <span class="btag active">Tech Picks</span>
+          <span class="btag active">Dividends</span>
+          <span class="btag active">Swing Trades</span>
+          <span class="btag">Watchlist 2025</span>
+        </div>
+      </div>
+
+      <!-- Macro -->
+      <div class="bento-card bc-7 reveal reveal-delay-2">
+        <div class="bento-icon">MK</div>
+        <div class="bento-title">Macro Dashboard</div>
+        <div class="bento-desc">Indices, commodities, crypto, forex, and bonds — all in one view. Plus Fear & Greed, market breadth, sector rotation, and upcoming economic events.</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px">
+          <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:var(--mono);font-size:13px;color:var(--t1)">5,248</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px;font-family:var(--sans)">S&P 500</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:var(--mono);font-size:13px;color:var(--red)">18.4</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px;font-family:var(--sans)">VIX</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:var(--mono);font-size:13px;color:var(--accent)">4.28%</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px;font-family:var(--sans)">10Y</div>
+          </div>
+          <div style="background:var(--bg3);border:1px solid var(--b1);border-radius:4px;padding:10px;text-align:center">
+            <div style="font-family:var(--mono);font-size:13px;color:var(--accent)">$2,341</div>
+            <div style="font-size:9px;color:var(--t3);margin-top:2px;font-family:var(--sans)">Gold</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row reveal">
+      <div class="stat-item">
+        <div class="stat-value">60<span>+</span></div>
+        <div class="stat-label">Stocks Screened</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">15<span>+</span></div>
+        <div class="stat-label">Data Sources</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value"><span>$</span>3</div>
+        <div class="stat-label">Per Month</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">0<span>s</span></div>
+        <div class="stat-label">Setup Required</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" style="background:var(--bg1);border-top:1px solid var(--b1);border-bottom:1px solid var(--b1)">
+  <div class="container" style="text-align:center">
+    <div class="reveal">
+      <span class="section-label">Pricing</span>
+      <h2 class="section-title">Simple, honest pricing.</h2>
+      <p class="section-sub" style="margin:0 auto">No hidden fees. No confusing tiers. Just the tools you need at a price that makes sense.</p>
+    </div>
+
+    <div class="pricing-grid">
+      <div class="pricing-card reveal reveal-delay-1">
+        <div class="plan-name">Free</div>
+        <div class="plan-price"><sup>$</sup>0</div>
+        <div class="plan-period">forever</div>
+        <ul class="plan-features">
+          <li>Stock research & charts</li>
+          <li>Macro dashboard</li>
+          <li>DCF calculator</li>
+          <li>Basic screener</li>
+          <li class="dim">Saved screener presets</li>
+          <li class="dim">Named watchlists & sync</li>
+          <li class="dim">Portfolio analytics</li>
+          <li class="dim">AI Analyst</li>
+        </ul>
+        <a href="/" class="btn-plan btn-plan-ghost">Get started free</a>
+      </div>
+
+      <div class="pricing-card featured reveal reveal-delay-2">
+        <div class="plan-name">Pro</div>
+        <div class="plan-price"><sup>$</sup>3</div>
+        <div class="plan-period">per month</div>
+        <ul class="plan-features">
+          <li>Everything in Free</li>
+          <li>AI Analyst (Claude-powered)</li>
+          <li>Saved screener presets</li>
+          <li>Named watchlists & sync</li>
+          <li>Portfolio analytics</li>
+          <li>Sharpe, beta & risk metrics</li>
+          <li>Sector allocation charts</li>
+          <li>Priority support</li>
+        </ul>
+        <button onclick="startCheckout()" class="btn-plan btn-plan-solid" id="checkout-btn">Start Pro — $3/mo</button>
+      </div>
+    </div>
+
+    <p style="margin-top:20px;font-size:11px;color:var(--t3);font-family:var(--mono);letter-spacing:0.06em">Cancel anytime &nbsp;·&nbsp; No credit card to start &nbsp;·&nbsp; Upgrade in seconds</p>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials">
+  <div class="container">
+    <div class="reveal" style="text-align:center;margin-bottom:0">
+      <span class="section-label">Reviews</span>
+      <h2 class="section-title">Trusted by retail investors.</h2>
+    </div>
+
+    <div class="testimonials">
+      <div class="tcard reveal reveal-delay-1">
+        <p class="tcard-quote">"I used to pay $30/month for a Bloomberg-lite tool that was slower and harder to use. Terminal Pro does everything I actually need at a tenth of the price."</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--accent)">MK</div>
+          <div>
+            <div class="tcard-name">Marcus K.</div>
+            <div class="tcard-role">Retail Investor · 8 yrs</div>
+          </div>
+        </div>
+      </div>
+      <div class="tcard reveal reveal-delay-2">
+        <p class="tcard-quote">"The AI Analyst feature is genuinely scary good. It found valuation risks in my TSLA position I'd completely missed. Worth $3/month just for that."</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--blue)">SR</div>
+          <div>
+            <div class="tcard-name">Sofia R.</div>
+            <div class="tcard-role">Swing Trader · 5 yrs</div>
+          </div>
+        </div>
+      </div>
+      <div class="tcard reveal reveal-delay-3">
+        <p class="tcard-quote">"The screener presets are a game changer. I have my value filter, my dividend filter, my growth filter — one click and I'm running the screen. Saves me 20 minutes a day."</p>
+        <div class="tcard-author">
+          <div class="tcard-avatar" style="background:var(--red)">JT</div>
+          <div>
+            <div class="tcard-name">James T.</div>
+            <div class="tcard-role">Long-term Investor</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="reveal">
+    <h2>Ready to research<br>with <em style="color:var(--accent);font-style:normal">conviction</em>?</h2>
+    <p>Join investors who use Terminal Pro to make smarter decisions.</p>
+    <a href="/" class="btn-primary" style="display:inline-flex;margin:0 auto">
+      Launch Terminal Pro <span class="arrow">→</span>
+    </a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <div class="nav-logo-mark" style="width:20px;height:20px;font-size:10px">T</div>
+    TERMINAL PRO
+  </div>
+  <ul class="footer-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#pricing">Pricing</a></li>
+    <li><a href="/">Launch App</a></li>
+  </ul>
+  <div class="footer-copy">© 2026 Terminal Pro. All rights reserved.</div>
+</footer>
+
+<script>
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); } });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+// Stripe checkout
+async function startCheckout() {
+  const btn = document.getElementById('checkout-btn');
+  btn.textContent = 'Redirecting...';
+  btn.disabled = true;
+  try {
+    const res = await fetch('/create-checkout-session', { method: 'POST' });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else {
+      alert('Something went wrong. Please try again.');
+      btn.textContent = 'Start Pro — $3/mo';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    alert('Could not connect to server. Please try again.');
+    btn.textContent = 'Start Pro — $3/mo';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
