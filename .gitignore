@@ -1,0 +1,14 @@
+dist/
+build/
+out/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.spec
+*.pak
+*.dll
+*.dat
+.env
+alerts.json
+userdata.json
